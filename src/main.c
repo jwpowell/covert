@@ -7,6 +7,7 @@
 #include <pthread.h>
 #include <sched.h>
 #include <sys/sysinfo.h>
+#include <time.h>
 #include <unistd.h>
 
 /**!
@@ -138,7 +139,10 @@ typedef struct cache {
     /// Currently the average of the hit and miss latency.
     uint64_t hit_threshold;
 
-    /// A buffer the size of the cache used for manipulation of the cache
+    /// Size of `buffer` in bytes
+    size_t buffer_size;
+
+    /// A buffer a multiple size of the cache used for manipulation of the cache
     uint8_t* buffer;
 } cache_t;
 
@@ -163,7 +167,8 @@ int cache_init(cache_t* cache)
     cache->index_mask = (cache->nsets - 1) << cache->index_shift;
     cache->tag_mask = (~0UL) << cache->tag_shift;
 
-    cache->buffer = aligned_alloc(cache->size, cache->size);
+    cache->buffer_size = cache->size * cache->assoc;
+    cache->buffer = aligned_alloc(cache->size, cache->buffer_size);
 
     if (cache->buffer == NULL) {
         return -1;
@@ -285,15 +290,74 @@ int cache_count_hits(cache_t* cache, size_t setno)
         }
 
         ptr += cache->nsets << cache->index_shift;
+
+        if (!(ptr < (cache->buffer + cache->buffer_size))) {
+            printf("sadface.\n");
+        }
     }
 
     return count;
 }
 
+int pin_current_thread(int cpuno)
+{
+    pthread_t current = pthread_self();
+    cpu_set_t cpuset;
+
+    CPU_ZERO(&cpuset);
+    CPU_SET(cpuno, &cpuset);
+
+    pthread_setaffinity_np(current, CPU_SETSIZE, &cpuset);
+
+    return 0;
+}
+
+/**
+ * Transmit the message over the covert channel.
+ *
+ * `tx` is the set number for transmitting the message. `rx` is the set number
+ * for receiving sync messages from receiver.
+ */
+int transmit(cache_t* cache, int setno, char* msg)
+{
+    return 0;
+}
+
+int receive(cache_t* cache, int setno)
+{
+    return 0;
+}
+
 int main(int argc, char** argv)
 {
-    (void)argc;
-    (void)argv;
+    if (argc != 4) {
+        return 1;
+    }
+
+    char* role = argv[1];
+    int setno = atoi(argv[2]);
+    int cpuno = atoi(argv[3]);
+
+    pin_current_thread(cpuno);
+
+    cache_t cache;
+
+    cache_init(&cache);
+
+    printf("Set:    %d\n", setno);
+    printf("CPU:   %d\n", cpuno);
+
+    if (strcmp(role, "transmit") == 0) {
+        printf("Role:  TRANSMIT\n");
+        transmit(&cache, setno, "hello world!");
+    } else if (strcmp(role, "receive") == 0) {
+        printf("Role:  RECEIVE\n");
+        receive(&cache, setno);
+    } else {
+        printf("Invalid role: %s\n", role);
+    }
+
+    cache_deinit(&cache);
 
     return 0;
 }
