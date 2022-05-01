@@ -1,0 +1,12 @@
+---
+Language: Cpp
+BasedOnStyle: Chromium
+AlignAfterOpenBracket: Align
+ContinuationIndentWidth: 4
+IndentWidth: 4
+BinPackParameters: true
+AllowShortEnumsOnASingleLine: false
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: true
+...
